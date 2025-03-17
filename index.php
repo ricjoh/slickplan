@@ -1,11 +1,11 @@
 <?php
-require_once( "logdump.php");
+require_once( "logdump.php" );
 define('OAUTH2_CLIENT_ID', '9e2e7978-c242-4f95-bdfe-e5f919da81e6');
 define('OAUTH2_CLIENT_SECRET', 'MMJSYiU1VJbvg5dnxJXDbhgpQoWUuprvxT4qwjzx');
 
 $authorizeURL = 'https://slickplan.com/api/v1/authorize';
 $tokenURL = 'https://slickplan.com/api/v1/token';
-$apiURLBase = 'https://theferg.slickplan.com/api/v1/';
+$apiURLBase = 'https://slickplan.com/api/v1/';
 
 session_start();
 
@@ -41,18 +41,16 @@ if (_get('action') == 'logout') {
 	// Exchange the auth code for a token
 	error_log( "POST for token" );
 	$form = http_build_query([
-        'response_type' => 'code',        
-		'grant_type' => 'client_credentials',
+		'grant_type' => 'authorization_code',
 		'client_id' => OAUTH2_CLIENT_ID,
 		'client_secret' => OAUTH2_CLIENT_SECRET,
-		'state' => _session('state'),
+		'redirect_uri' => 'https://slickplan.ric.fergdev.com/',
 		'code' => _get('code')
+		// 'state' => _session('state'),
 	]);
 	$response = POST($tokenURL, $form);
 
-    log_dump( $response, 'POST response for token' );
-
-    
+	log_dump( $response, 'TOKEN' );
 	$token = $response->access_token;
 	$_SESSION['access_token'] = $token;
     // error_log( "Token Size: " . strlen($token) );
@@ -61,32 +59,50 @@ if (_get('action') == 'logout') {
 	error_log( "Token Match: " . ($_SESSION['access_token'] === $token ? 'Yes' : 'No'));
 	redirect_to(get_current_base_url());
 	exit();
-} else if (_session('access_token') && _get('action') !== 'none') {
-	$user = GET($apiURLBase . 'me');
+} else if (_session('access_token')) {
+	if ( _get('action') !== 'none') {
+		$user = GET($apiURLBase . 'me');
 
-	echo '<h3>Logged In</h3>';
-	echo '<a href="?action=logout">Log Out</a><br>';
-	echo '<h4>' . ( isset($user) && isset($user->name) ? $user->name : 'Unknown User') . '</h4>';
-	echo '<pre>';
-	// print_r($user);
-	echo _session('access_token', '') . "\n\n";
-	echo '</pre>';
+		echo '<h3>Logged In</h3>';
+		echo '<a href="?action=logout">Log Out</a><br>';
+		echo '<h4>' . ( isset($user) && isset($user->username) ? $user->username : 'Unknown User') . '</h4>';
+		echo '<a href="?action=test">Test</a><br>';
+		echo '<a href="?action=structure">Structure</a><br>';
+		echo '<a href="?action=page">Page</a><br>';
+		echo '<a href="?action=content">Page Content</a><br>';
+	}
+	if ( _get('action') == 'test') {
+		$test = GET($apiURLBase . 'sitemaps/649439/structure');
+		echo "<pre>";
+		print_r( $test );
+		echo "</pre>";
+	}
+	if ( _get('action') == 'structure') {
+		$test = GET($apiURLBase . 'sitemaps/649439/structure');
+		echo "<pre>";
+		print_r( $test );
+		echo "</pre>";
+	}
+	if ( _get('action') == 'page') {
+		$test = GET($apiURLBase . 'sitemaps/649439/page/svgblbf49h4se4irmx3');
+		echo "<pre>";
+		print_r( $test );
+		echo "</pre>";
+	}
+	if ( _get('action') == 'content') {
+		$test = GET($apiURLBase . 'sitemaps/649439/page/svgblbf49h4se4irmx3/content');
+		echo "<pre>";
+		print_r( $test );
+		echo "</pre>";
+	}
+
+
 } else {
 	echo '<h3>Not logged in</h3>';
 	echo '<p><a href="?action=login">Log In</a></p>';
 	exit();
 }
 
-// function apiRequest($url) {
-// 	$context  = stream_context_create([
-// 		'http' => [
-// 			'user_agent' => 'Ferguson OAuth Login',
-// 			'header' => 'Accept: application/json'
-// 		]
-// 	]);
-// 	$response = @file_get_contents($url, false, $context);
-// 	return $response ? json_decode($response) : $response;
-// }
 
 function _get($key, $default=NULL) {
   return isset($_GET[$key]) ? $_GET[$key] : $default;
@@ -132,20 +148,18 @@ function POST($url, $builtdata)
 
 	curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 	$response = curl_exec($curl);
-
-    $response = json_decode($response);
-    log_dump( $response, 'POST reply' );
     curl_close($curl);
-	return $response; // ? json_decode($response) : $response;
+	return $response ? json_decode($response) : $response;
 }
 
 function GET($url)
 {
-	$curl = curl_init($url);
 	if ( $_SESSION['access_token'] ) {
 		error_log( "Session Token Size GET: " . strlen($_SESSION['access_token']) );
 		$url .= '?access_token=' . $_SESSION['access_token'];
 	}
+	error_log( "GET URL: " . $url );
+	$curl = curl_init($url);
 	curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "GET");
 	curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 	curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false );
@@ -162,10 +176,9 @@ function GET($url)
 	// }
 
 	curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
-	// log_dump( curl_getinfo($curl), 'curl-GET' );/
 
 	$response = curl_exec($curl);
 	error_log( "Response: " . $response );
 	curl_close($curl);
-	return $response; // ? json_decode($response) : $response;
+	return $response ? json_decode($response) : $response;
 }
