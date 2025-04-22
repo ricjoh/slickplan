@@ -1,4 +1,6 @@
 <?php
+// https://github.com/slickplan/api-docs
+
 require_once( "logdump.php" );
 define('OAUTH2_CLIENT_ID', '9e2e7978-c242-4f95-bdfe-e5f919da81e6');
 define('OAUTH2_CLIENT_SECRET', 'MMJSYiU1VJbvg5dnxJXDbhgpQoWUuprvxT4qwjzx');
@@ -66,15 +68,17 @@ if (_get('action') == 'logout') {
 		echo '<h3>Logged In</h3>';
 		echo '<a href="?action=logout">Log Out</a><br>';
 		echo '<h4>' . ( isset($user) && isset($user->username) ? $user->username : 'Unknown User') . '</h4>';
-		echo '<a href="?action=test">Test</a><br>';
+		echo '<a href="?action=sitemaps">Sitemap ID List</a><br>';
 		echo '<a href="?action=structure">Structure</a><br>';
 		echo '<a href="?action=page">Page</a><br>';
 		echo '<a href="?action=content">Page Content</a><br>';
 	}
-	if ( _get('action') == 'test') {
-		$test = GET($apiURLBase . 'sitemaps/649439/structure');
+	if ( _get('action') == 'sitemaps') {
+		$test = GET($apiURLBase . 'sitemaps');
 		echo "<pre>";
-		print_r( $test );
+		foreach ( $test as $sitemap ) {
+			echo "{$sitemap->title}: {$sitemap->id}\n";
+		}
 		echo "</pre>";
 	}
 	if ( _get('action') == 'structure') {

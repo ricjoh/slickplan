@@ -7,6 +7,9 @@ $authorizeURL = 'https://slickplan.com/api/v1/authorize';
 $tokenURL = 'https://slickplan.com/api/v1/token';
 $apiURLBase = 'https://slickplan.com/api/v1';
 
+$SITEMAPID = '650560';
+$BRAND = 'midsota';
+
 session_start();
 
 if (_get('action') == 'logout') {
@@ -70,15 +73,16 @@ if (_get('action') == 'logout') {
 	}
 	if ( _get('action') == 'go') {
 		$fh = fopen("/tmp/files", "w");
-		$structure = GET("{$apiURLBase}/sitemaps/649439/structure");
+		$structure = GET("{$apiURLBase}/sitemaps/{$SITEMAPID}/structure");
 		foreach ( $structure->svgmainsection as $page ) {
 			if ( isset($page->has_content ) )
 			{
-				$pagedata = GET("{$apiURLBase}/sitemaps/649439/page/{$page->id}/content");
+				$pagedata = GET("{$apiURLBase}/sitemaps/{$SITEMAPID}/page/{$page->id}/content");
 				foreach ( $pagedata->body as $content ) {
 					if ( $content->type == 'file' ) {
 						foreach ( $content->content as $file ) {
-							$outline = fprintf( $fh, "%s\t/tmp/look/%s/%s\n",
+							$outline = fprintf( $fh, "%s\t/tmp/%s/%s/%s\n",
+										$BRAND,
 										$file->url,
 										str_replace(' ', '_', preg_replace('/[[:^print:]]/', '', $page->text )),
 										$file->filename );
@@ -89,27 +93,11 @@ if (_get('action') == 'logout') {
 		}
 		fclose($fh);
 		echo "<h1>Done.</h1>";
-	}
-	if ( _get('action') == 'structure') {
-		$test = GET($apiURLBase . 'sitemaps/649439/structure');
 		echo "<pre>";
-		print_r( $test );
+		echo "IFS=\"\t\" (maybe)\n";
+		echo "cat files | while read url pathwithfilename; do mkdir -p $(dirname \$pathwithfilename); wget -o \$pathwithfilename \$url; done\n";
 		echo "</pre>";
 	}
-	if ( _get('action') == 'page') {
-		$test = GET($apiURLBase . 'sitemaps/649439/page/svgblbf49h4se4irmx3');
-		echo "<pre>";
-		print_r( $test );
-		echo "</pre>";
-	}
-	if ( _get('action') == 'content') {
-		$test = GET($apiURLBase . 'sitemaps/649439/page/svgblbf49h4se4irmx3/content');
-		echo "<pre>";
-		print_r( $test );
-		echo "</pre>";
-	}
-
-
 } else {
 	echo '<h3>Not logged in</h3>';
 	echo '<p><a href="?action=login">Log In</a></p>';
