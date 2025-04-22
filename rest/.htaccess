@@ -1,0 +1,8 @@
+RewriteEngine On
+RewriteBase /rest/
+
+# Rewrite requests for the /series/variants endpoint
+RewriteRule ^series/variants/?$ index.php [QSA,L]
+
+# Rewrite requests for the /series endpoint
+RewriteRule ^series/?$ index.php [QSA,L]
