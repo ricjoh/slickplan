@@ -7,8 +7,10 @@ $authorizeURL = 'https://slickplan.com/api/v1/authorize';
 $tokenURL = 'https://slickplan.com/api/v1/token';
 $apiURLBase = 'https://slickplan.com/api/v1';
 
-$SITEMAPID = '650388';
-$BRAND = 'pace-american';
+$SITEMAPID = '684774';
+$BRAND = 'hh-trailers';
+// $SITEMAPID = '650560';
+// $BRAND = 'midsota';
 
 session_start();
 
@@ -69,10 +71,12 @@ if (_get('action') == 'logout') {
 		echo '<h3>Logged In</h3>';
 		echo '<a href="?action=logout">Log Out</a><br>';
 		echo '<h4>' . ( isset($user) && isset($user->username) ? $user->username : 'Unknown User') . '</h4>';
+		echo "<h3>Slurping {$BRAND} ({$SITEMAPID})</h3>";
 		echo '<a href="?action=go">Slurp</a><br>';
+		echo "<pre>cat files-{$BRAND} | while read url pathwithfilename; do mkdir -p \$(dirname \$pathwithfilename); wget -O \$pathwithfilename \$url; done\n</pre>";
 	}
 	if ( _get('action') == 'go') {
-		$fh = fopen("/tmp/files", "w");
+		$fh = fopen("/tmp/files-{$BRAND}", "w");
 		$structure = GET("{$apiURLBase}/sitemaps/{$SITEMAPID}/structure");
 		foreach ( $structure->svgmainsection as $page ) {
 			if ( isset($page->has_content ) )
@@ -95,7 +99,7 @@ if (_get('action') == 'logout') {
 		echo "<h1>Done.</h1>";
 		echo "<pre>";
 		echo "IFS=\"\\t\" (maybe)\n";
-		echo "cat files | while read url pathwithfilename; do mkdir -vp $(dirname \$pathwithfilename); wget -vo \$pathwithfilename \$url; done\n";
+		echo "cat files-{$BRAND} | while read url pathwithfilename; mkdir -p \$(dirname \$pathwithfilename); wget -O \$pathwithfilename \$url; done\n";
 		echo "</pre>";
 	}
 } else {

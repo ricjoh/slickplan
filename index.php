@@ -80,21 +80,22 @@ if (_get('action') == 'logout') {
 			echo "{$sitemap->title}: {$sitemap->id}\n";
 		}
 		echo "</pre>";
+        
 	}
 	if ( _get('action') == 'structure') {
-		$test = GET($apiURLBase . 'sitemaps/649439/structure');
+		$test = GET($apiURLBase . 'sitemaps/649958/content/');
 		echo "<pre>";
 		print_r( $test );
 		echo "</pre>";
 	}
 	if ( _get('action') == 'page') {
-		$test = GET($apiURLBase . 'sitemaps/649439/page/svgblbf49h4se4irmx3');
+		$test = GET($apiURLBase . 'sitemaps/649958/page/svgwgwgo5gfgd18elua');
 		echo "<pre>";
 		print_r( $test );
 		echo "</pre>";
 	}
 	if ( _get('action') == 'content') {
-		$test = GET($apiURLBase . 'sitemaps/649439/page/svgblbf49h4se4irmx3/content');
+		$test = GET($apiURLBase . 'sitemaps/649958/page/svgagqz33otnr5t9e50/content');
 		echo "<pre>";
 		print_r( $test );
 		echo "</pre>";
