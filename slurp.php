@@ -2,13 +2,20 @@
 require_once( "logdump.php" );
 define('OAUTH2_CLIENT_ID', '9e2e7978-c242-4f95-bdfe-e5f919da81e6');
 define('OAUTH2_CLIENT_SECRET', 'MMJSYiU1VJbvg5dnxJXDbhgpQoWUuprvxT4qwjzx');
-
+global $htmlstarted; $htmlstarted = false; // can't do HTML stuff on OAUTH handshake
 $authorizeURL = 'https://slickplan.com/api/v1/authorize';
 $tokenURL = 'https://slickplan.com/api/v1/token';
 $apiURLBase = 'https://slickplan.com/api/v1';
 
-$SITEMAPID = '684774';
-$BRAND = 'hh-trailers';
+if ($_GET['uri']) {
+	$SITEMAPID = $_GET['uri'];
+	$BRAND = $_GET['name'];
+} else {
+	header("Location: /");
+	exit();
+}
+// $SITEMAPID = '684774';
+// $BRAND = 'hh-trailers';
 // $SITEMAPID = '650560';
 // $BRAND = 'midsota';
 
@@ -19,72 +26,30 @@ if (_get('action') == 'logout') {
 	unset($_SESSION['access_token']);
 	redirect_to( get_current_base_url() . "?action=none");
 	exit();
-} else if (_get('action') == 'login') {
-	error_log( "Logging in" );
-	// Generate a random hash and store in the session for security
-    //	$_SESSION['state'] = hash('sha256', microtime(TRUE) . rand() . $_SERVER['REMOTE_ADDR']);
-	unset($_SESSION['access_token']);
-
-	// Redirect the user to Github's authorization page
-	$authDest = $authorizeURL . '?' . http_build_query([
-		'response_type' => 'code',
-		'client_id' => OAUTH2_CLIENT_ID,
-		'redirect_uri' => 'https://slickplan.ric.fergdev.com/',
-        //	'state' => _session('state'),
-		'scope' => 'all_read'
-	]);
-	redirect_to( $authDest );
-	exit();
-} else if (_get('code')) {
-	error_log( "Code Sent" );
-	// Verify the state matches our stored state
-    //	if (!_get('state') || $_SESSION['state'] != _get('state')) {
-	//	error_log( "State mismatch" );
-    //		redirect_to($_SERVER['PHP_SELF']);
-	//}
-
-	// Exchange the auth code for a token
-	error_log( "POST for token" );
-	$form = http_build_query([
-		'grant_type' => 'authorization_code',
-		'client_id' => OAUTH2_CLIENT_ID,
-		'client_secret' => OAUTH2_CLIENT_SECRET,
-		'redirect_uri' => 'https://slickplan.ric.fergdev.com/',
-		'code' => _get('code')
-		// 'state' => _session('state'),
-	]);
-	$response = POST($tokenURL, $form);
-
-	// log_dump( $response, 'TOKEN' );
-	$token = $response->access_token;
-	$_SESSION['access_token'] = $token;
-    // error_log( "Token Size: " . strlen($token) );
-	// error_log( "Token: " . $token );
-	// error_log( "Session Token Size: " . strlen($_SESSION['access_token']) );
-	// error_log( "Token Match: " . ($_SESSION['access_token'] === $token ? 'Yes' : 'No'));
-	redirect_to(get_current_base_url());
-	exit();
 } else if (_session('access_token')) {
+	_start_html();
 	if ( _get('action') !== 'none') {
 		$user = GET("{$apiURLBase}/me");
 
-		echo '<h3>Logged In</h3>';
-		echo '<a href="?action=logout">Log Out</a><br>';
-		echo '<h4>' . ( isset($user) && isset($user->username) ? $user->username : 'Unknown User') . '</h4>';
-		echo "<h3>Slurping {$BRAND} ({$SITEMAPID})</h3>";
-		echo '<a href="?action=go">Slurp</a><br>';
-		echo "<pre>cat files-{$BRAND} | while read url pathwithfilename; do mkdir -p \$(dirname \$pathwithfilename); wget -O \$pathwithfilename \$url; done\n</pre>";
+		echo '<a href="?action=logout">Log Out of Slickplan</a><br>';
+		echo "<h2>Step 1: Click this button to download the file list to pluto: /tmp/files-{$BRAND}</h3>";
+		echo "<a href=\"slurp.php?uri={$SITEMAPID}&name={$BRAND}&action=go\"><button>Slurp {$BRAND} ({$SITEMAPID})</button></a>";
 	}
+
 	if ( _get('action') == 'go') {
 		$fh = fopen("/tmp/files-{$BRAND}", "w");
 		$structure = GET("{$apiURLBase}/sitemaps/{$SITEMAPID}/structure");
+		$images = 0;
+		$folders = 0;
 		foreach ( $structure->svgmainsection as $page ) {
 			if ( isset($page->has_content ) )
 			{
 				$pagedata = GET("{$apiURLBase}/sitemaps/{$SITEMAPID}/page/{$page->id}/content");
 				foreach ( $pagedata->body as $content ) {
 					if ( $content->type == 'file' ) {
+						$folders++;
 						foreach ( $content->content as $file ) {
+							$images++;
 							$outline = fprintf( $fh, "%s\t/tmp/%s/%s/%s\n",
 										$file->url,
 										$BRAND,
@@ -96,18 +61,22 @@ if (_get('action') == 'logout') {
 			}
 		}
 		fclose($fh);
-		echo "<h1>Done.</h1>";
+		chmod("/tmp/files-{$BRAND}", 0664);
+		echo "<h3>Done. Found {$images} images in {$folders} folders.</h3>";
+		echo "<h2>Step 2: Run this command in pluto:/tmp/ to download the files</h2>";
 		echo "<pre>";
-		echo "IFS=\"\\t\" (maybe)\n";
-		echo "cat files-{$BRAND} | while read url pathwithfilename; mkdir -p \$(dirname \$pathwithfilename); wget -O \$pathwithfilename \$url; done\n";
+		echo "cat files-{$BRAND} | while read url pathwithfilename; do mkdir -p \$(dirname \$pathwithfilename); wget -O \$pathwithfilename \$url; done\n";
+		echo "</pre>";
+		echo "<h2>Step 3: Have Todd copy this folder /tmp/{$BRAND} to the Jobs Server</h2>";
 		echo "</pre>";
 	}
 } else {
+	_start_html();
 	echo '<h3>Not logged in</h3>';
 	echo '<p><a href="?action=login">Log In</a></p>';
-	exit();
 }
-
+_end_html();
+exit();
 
 function _get($key, $default=NULL) {
   return isset($_GET[$key]) ? $_GET[$key] : $default;
@@ -186,4 +155,45 @@ function GET($url)
 	// error_	( "Response: " . $response );
 	curl_close($curl);
 	return $response ? json_decode($response) : $response;
+}
+function _start_html() {
+	global $htmlstarted;
+	$htmlstarted == true;
+	echo <<< EOHTML
+<html>
+<head>
+	<style>
+		body {
+			font-family: sans-serif;
+			margin: 3rem;
+		}
+		pre, pre a {
+			font-family: monospace;
+		}
+		button {
+			font-size: 1.5rem;
+			padding: 1rem 2rem;
+			background-color: darkblue;
+			color: white;
+			border-radius: 0.5rem;
+			border-style: none;
+		}
+		button:hover {
+			background-color: #aaa;
+			border-style: solid;
+		}
+	</style>
+</head>
+<body>
+<h1>Slickplan Download Images</h1>
+EOHTML;
+}
+
+function _end_html() {
+	global $htmlstarted;
+	if ( !$htmlstarted ) return;
+	echo <<< EOHTML
+</body>
+</html>
+EOHTML;
 }
