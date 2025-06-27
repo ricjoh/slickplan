@@ -33,10 +33,10 @@ if (_get('action') == 'logout') {
 
 		echo '<a href="?action=logout">Log Out of Slickplan</a><br>';
 		echo "<h2>Step 1: Click this button to download the file list to pluto: /tmp/files-{$BRAND}</h3>";
-		echo "<a href=\"slurp.php?uri={$SITEMAPID}&name={$BRAND}&action=go\"><button>Slurp {$BRAND} ({$SITEMAPID})</button></a>";
+		echo "<a href=\"slurp.php?uri={$SITEMAPID}&name={$BRAND}&action=slurp\"><button>Slurp {$BRAND} ({$SITEMAPID})</button></a>";
 	}
 
-	if ( _get('action') == 'go') {
+	if ( _get('action') == 'slurp') {
 		$fh = fopen("/tmp/files-{$BRAND}", "w");
 		$structure = GET("{$apiURLBase}/sitemaps/{$SITEMAPID}/structure");
 		$images = 0;
@@ -50,9 +50,8 @@ if (_get('action') == 'logout') {
 						$folders++;
 						foreach ( $content->content as $file ) {
 							$images++;
-							$outline = fprintf( $fh, "%s\t/tmp/%s/%s/%s\n",
+							$outline = fprintf( $fh, "%s\t%s/%s\n",
 										$file->url,
-										$BRAND,
 										str_replace(' ', '_', preg_replace('/[[:^print:]]/', '', $page->text )),
 										$file->filename );
 						}
@@ -62,14 +61,53 @@ if (_get('action') == 'logout') {
 		}
 		fclose($fh);
 		chmod("/tmp/files-{$BRAND}", 0664);
+
 		echo "<h3>Done. Found {$images} images in {$folders} folders.</h3>";
-		echo "<h2>Step 2: Run this command in pluto:/tmp/ to download the files</h2>";
-		echo "<pre>";
-		echo "cat files-{$BRAND} | while read url pathwithfilename; do mkdir -p \$(dirname \$pathwithfilename); wget -O \$pathwithfilename \$url; done\n";
-		echo "</pre>";
-		echo "<h2>Step 3: Have Todd copy this folder /tmp/{$BRAND} to the Jobs Server</h2>";
-		echo "</pre>";
+		echo "<h2>Step 2: Enter a path on Jobs Server where you want the files copied. A folder called \"Slickplan Images\" will be created in that folder.</h2>";
+        echo "Paste in the path that you want in whatever form you have. As long as it includes the _CLIENTS parts, we should be able to figure it out.</br>";
+        echo "<input type=\"text\" name=\"jobserverpath\" id=\"jobsserverpath\" size=\"100\" onchange=\"updatehref()\" /><br/>\n";
+        echo "<br/>Expect this to take 2-3 minutes to run.<br/><br/>";
+		echo "<a href=\"slurp.php?uri={$SITEMAPID}&name={$BRAND}&action=download-and-copy&filelist=/tmp/files-{$BRAND}\" id=\"downloadbutton\"><button>Download & Copy {$BRAND} ({$SITEMAPID})</button></a>";
+
+        echo <<<END
+<script type="text/javascript">
+function updatehref() {
+    const input = document.getElementById("jobsserverpath");
+    const link = document.getElementById("downloadbutton");
+
+    //console.log(input);
+    //console.log(link)
+
+    const url = new URL(link.href);
+    const newPath = input.value;
+
+    url.searchParams.set("jspath", newPath); // adds or updates 'path'
+
+    link.href = url.toString();
+    //console.log(link.href);
+}
+</script>
+END;
 	}
+
+    if (_get('action') == "download-and-copy") {
+        // Example jspath:
+        //     smb://fai-server.fai2.com/jobs%20server/_CLIENTS/NOVAE/NOVA6037%20Compass%20Trailers%20Website
+
+        $jspath = _get('jspath');
+        error_log("jspath (1): \"$jspath\"");
+
+        $jspath = str_replace('\\', '/', $jspath);
+        $jspath = preg_replace('/^.*[\\/]_CLIENTS/', '_CLIENTS', $jspath);
+        $jspath = preg_replace('/\s+$/', '', $jspath);
+        $jspath = urldecode($jspath);
+        error_log("jspath (2): \"$jspath\"");
+
+        $cmd = getcwd() . "/slurp-copy-slickplan-images.sh \"" . _get('filelist') . "\" \"" . $jspath . "\"";
+        error_log($cmd);
+        error_log(shell_exec($cmd));
+    }
+
 } else {
 	_start_html();
 	echo '<h3>Not logged in</h3>';
